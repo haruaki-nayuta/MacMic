@@ -15,6 +15,19 @@ func checkErr(_ status: OSStatus, _ message: String) {
     }
 }
 
+func getDeviceName(_ deviceID: AudioObjectID) -> String {
+    var name: CFString = "" as CFString
+    var propertySize = UInt32(MemoryLayout<CFString>.size)
+    var propertyAddress = AudioObjectPropertyAddress(
+        mSelector: kAudioObjectPropertyName,
+        mScope: kAudioObjectPropertyScopeGlobal,
+        mElement: kAudioObjectPropertyElementMain
+    )
+    let status = AudioObjectGetPropertyData(deviceID, &propertyAddress, 0, nil, &propertySize, &name)
+    return status == noErr ? (name as String) : "Unknown Device"
+}
+
+
 // MARK: - Ring Buffer
 // 簡易的なSRSW (Single Reader Single Writer) リングバッファ
 class RingBuffer {
@@ -197,6 +210,7 @@ func main() {
     )
     checkErr(AudioObjectGetPropertyData(AudioObjectID(kAudioObjectSystemObject), &propertyAddress, 0, nil, &propertySize, &inputDeviceID), "Get Default Input Device")
     checkErr(AudioUnitSetProperty(inputUnit!, kAudioOutputUnitProperty_CurrentDevice, kAudioUnitScope_Global, 0, &inputDeviceID, 4), "Set Input Device")
+    print("   🎤 Input Device: \(getDeviceName(inputDeviceID))")
 
     
     // ---------------------------------------------------------
@@ -215,12 +229,19 @@ func main() {
     propertyAddress.mSelector = kAudioHardwarePropertyDefaultOutputDevice
     checkErr(AudioObjectGetPropertyData(AudioObjectID(kAudioObjectSystemObject), &propertyAddress, 0, nil, &propertySize, &outputDeviceID), "Get Default Output Device")
     checkErr(AudioUnitSetProperty(outputUnit!, kAudioOutputUnitProperty_CurrentDevice, kAudioUnitScope_Global, 0, &outputDeviceID, 4), "Set Output Device")
+    print("   🔊 Output Device: \(getDeviceName(outputDeviceID))")
 
     
+    // 3. Format Setup (Match Device Sample Rate, Float32, Mono)
     // ---------------------------------------------------------
-    // 3. Format Setup (48kHz, Float32, Mono)
-    // ---------------------------------------------------------
-    let sampleRate: Float64 = 48000.0
+    // まずデバイスのネイティブなサンプルレートを取得する
+    var deviceFormat = AudioStreamBasicDescription()
+    var deviceFormatSize = UInt32(MemoryLayout<AudioStreamBasicDescription>.size)
+    checkErr(AudioUnitGetProperty(inputUnit!, kAudioUnitProperty_StreamFormat, kAudioUnitScope_Input, kInputBus, &deviceFormat, &deviceFormatSize), "Get Device Format")
+    
+    let sampleRate = deviceFormat.mSampleRate
+    print("   ℹ️ Device Sample Rate: \(sampleRate) Hz")
+
     let bytesPerSample = UInt32(MemoryLayout<Float32>.size)
     var streamFormat = AudioStreamBasicDescription(
         mSampleRate: sampleRate,
