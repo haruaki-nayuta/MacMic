@@ -483,7 +483,7 @@ func main() {
         if let c = Terminal.readChar() {
             if c == 113 { // 'q'
                 restoreBufferSize()
-                print("\n.  Bye!")
+                print("\n.  Bye!!")
                 break
             } else if c == 109 { // 'm'
                 ringBuffer.isMuted.toggle()
