@@ -107,6 +107,24 @@ class RingBuffer {
             readIndex &+= 1
         }
     }
+
+    // Get peak level of recent frames for VU meter
+    func getLatestPeak(frames: UInt32) -> Float32 {
+        var maxVal: Float32 = 0.0
+        // atomic load of writeIndex is ideal, but for UI, simple read is "good enough"
+        let currentWriteIndex = writeIndex
+        
+        // Scan back 'frames'
+        let start = (Int(currentWriteIndex) - Int(frames) + Int(capacity)) % Int(capacity)
+        
+        var idx = start
+        for _ in 0..<frames {
+             let val = abs(buffer[idx])
+             if val > maxVal { maxVal = val }
+             idx = (idx + 1) % Int(capacity)
+        }
+        return maxVal
+    }
 }
 
 // Global Buffer
@@ -183,6 +201,16 @@ struct Terminal {
         var raw = originalTermios
         // Disable ECHO and ICANON (canonical mode)
         raw.c_lflag &= ~UInt(ECHO | ICANON)
+        // Non-blocking read
+        raw.c_cc.16 = 0 // VMIN = 0 (descriptor: VMIN is index 16 in Swift's termios struct tuple usually, but let's be safe and use subscript if possible or just mirror structure)
+        // Swift's termios c_cc is a tuple. Accessing by index is tricky.
+        // Standard indices: VMIN=16, VTIME=17 on macOS.
+        // Let's use a safer way if possible, or just direct modification if we are sure.
+        // Actually, c_cc is a tuple (UInt8, ...).
+        // Let's use `withUnsafeMutableBytes` on `raw` or just use the tuple indices ensuring macOS alignment.
+        // VMIN is usually index 16. VTIME is 17.
+        raw.c_cc.16 = 0
+        raw.c_cc.17 = 0
         tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw)
     }
     
@@ -377,40 +405,65 @@ func main() {
     func printStatus() {
         let volPercent = Int(round(ringBuffer.volume * 100))
         let muteStatus = ringBuffer.isMuted ? "🔇 MUTED" : "🔈 ON   "
+        
+        // VU Meter Calculation
+        // Look at last 1000 frames (~20ms at 48k)
+        let peak = ringBuffer.getLatestPeak(frames: 1000) 
+        
+        // Simple Logarithmic Scaling for visualization
+        // -60dB to 0dB
+        let db = 20 * log10(max(peak, 0.00001))
+        let minDb: Float = -60.0
+        let maxDb: Float = 0.0
+        
+        let ratio = max(0.0, min(1.0, (db - minDb) / (maxDb - minDb)))
+        let barsTotal = 15
+        let barsFilled = Int(ratio * Float(barsTotal))
+        
+        var meterStr = "["
+        for i in 0..<barsTotal {
+            if i < barsFilled {
+                meterStr += "|"
+            } else {
+                meterStr += "."
+            }
+        }
+        meterStr += "]"
+        
         // \r to overwrite line, \u{1B}[K to clear rest of line
-        print("\r   Volume: \(volPercent)%  \(muteStatus)     ", terminator: "")
+        print("\r   Vol: \(volPercent)% \(muteStatus)  \(meterStr)   ", terminator: "")
         fflush(stdout)
     }
     
     printStatus()
     
     while true {
-        guard let c = Terminal.readChar() else {
-            usleep(10000) // 10ms sleep to prevent 100% CPU
-            continue
-        }
-        
-        if c == 113 { // 'q'
-            print("\nBye!")
-            break
-        } else if c == 109 { // 'm'
-            ringBuffer.isMuted.toggle()
-            printStatus()
-        } else if c == 27 { // Escape sequence (Arrow keys)
-            // Expecting [ then A or B
-            guard let c2 = Terminal.readChar(), c2 == 91 else { continue }
-            guard let c3 = Terminal.readChar() else { continue }
-            
-            if c3 == 65 { // Up Arrow
-                ringBuffer.volume = min(ringBuffer.volume + 0.1, 2.0) // Max 200%
-                ringBuffer.volume = (ringBuffer.volume * 10).rounded() / 10
-                printStatus()
-            } else if c3 == 66 { // Down Arrow
-                ringBuffer.volume = max(ringBuffer.volume - 0.1, 0.0)
-                ringBuffer.volume = (ringBuffer.volume * 10).rounded() / 10
-                printStatus()
+        // Non-blocking read
+        if let c = Terminal.readChar() {
+            if c == 113 { // 'q'
+                print("\nBye!")
+                break
+            } else if c == 109 { // 'm'
+                ringBuffer.isMuted.toggle()
+            } else if c == 27 { // Escape sequence
+                if let c2 = Terminal.readChar(), c2 == 91,
+                   let c3 = Terminal.readChar() {
+                    if c3 == 65 { // Up
+                         ringBuffer.volume = min(ringBuffer.volume + 0.1, 2.0)
+                         ringBuffer.volume = (ringBuffer.volume * 10).rounded() / 10
+                    } else if c3 == 66 { // Down
+                         ringBuffer.volume = max(ringBuffer.volume - 0.1, 0.0)
+                         ringBuffer.volume = (ringBuffer.volume * 10).rounded() / 10
+                    }
+                }
             }
         }
+        
+        // Always update UI
+        printStatus()
+        
+        // Loop delay ~30ms (approx 33fps screen refresh)
+        usleep(30000)
     }
     
     checkErr(AudioOutputUnitStop(inputUnit!), "Stop Input")
