@@ -229,6 +229,24 @@ struct Terminal {
 }
 
 
+// MARK: - Global State
+struct AppState {
+    static var inputUnit: AudioUnit?
+    static var outputUnit: AudioUnit?
+    static var originalBufferFrames: UInt32?
+}
+
+func restoreBufferSize() {
+    guard let frames = AppState.originalBufferFrames,
+          let input = AppState.inputUnit,
+          let output = AppState.outputUnit else { return }
+          
+    var f = frames
+    let size = UInt32(MemoryLayout<UInt32>.size)
+    AudioUnitSetProperty(input, kAudioDevicePropertyBufferFrameSize, kAudioUnitScope_Global, 0, &f, size)
+    AudioUnitSetProperty(output, kAudioDevicePropertyBufferFrameSize, kAudioUnitScope_Global, 0, &f, size)
+}
+
 func main() {
     let kAppVersion = "1.0.0"
     let args = CommandLine.arguments
@@ -249,6 +267,13 @@ func main() {
     // Check for Version
     if args.contains("-v") || args.contains("--version") {
         print("MacMic version \(kAppVersion)")
+        exit(0)
+    }
+    
+    // Signal Handling
+    signal(SIGINT) { _ in
+        restoreBufferSize()
+        Terminal.disableRawMode()
         exit(0)
     }
 
@@ -331,6 +356,9 @@ func main() {
     checkErr(AudioUnitSetProperty(outputUnit!, kAudioOutputUnitProperty_CurrentDevice, kAudioUnitScope_Global, 0, &outputDeviceID, 4), "Set Output Device")
     print("   🔊 Output Device: \(getDeviceName(outputDeviceID))")
 
+    // Store to Global State
+    AppState.inputUnit = inputUnit
+    AppState.outputUnit = outputUnit
     
     // ---------------------------------------------------------
     // 3. Format Setup
@@ -379,6 +407,14 @@ func main() {
     // 5. Buffer Size (Extreme Optimization)
     // ---------------------------------------------------------
     let uint32Size = UInt32(MemoryLayout<UInt32>.size)
+    
+    // Get Current (Original) Buffer Size
+    var currentBuf: UInt32 = 0
+    var propSize = uint32Size
+    checkErr(AudioUnitGetProperty(inputUnit!, kAudioDevicePropertyBufferFrameSize, kAudioUnitScope_Global, 0, &currentBuf, &propSize), "Get Current Buffer Size")
+    AppState.originalBufferFrames = currentBuf
+    // print("   Original Buffer: \(currentBuf) frames")
+    
     AudioUnitSetProperty(inputUnit!, kAudioDevicePropertyBufferFrameSize, kAudioUnitScope_Global, 0, &bufferFrames, uint32Size)
     AudioUnitSetProperty(outputUnit!, kAudioDevicePropertyBufferFrameSize, kAudioUnitScope_Global, 0, &bufferFrames, uint32Size)
 
@@ -394,6 +430,7 @@ func main() {
     
     print("   Sample Rate: \(sampleRate) Hz")
     print("   Buffer: \(bufferFrames) frames (Requested)")
+    
     
     print("\n   -----------------------------------------")
     print("   [q] Quit  [m] Mute  [↑] Vol+  [↓] Vol-")
@@ -445,7 +482,8 @@ func main() {
         // Non-blocking read
         if let c = Terminal.readChar() {
             if c == 113 { // 'q'
-                print("\nBye!")
+                restoreBufferSize()
+                print("\n.  Bye!")
                 break
             } else if c == 109 { // 'm'
                 ringBuffer.isMuted.toggle()
@@ -453,7 +491,7 @@ func main() {
                 if let c2 = Terminal.readChar(), c2 == 91,
                    let c3 = Terminal.readChar() {
                     if c3 == 65 { // Up
-                         ringBuffer.volume = min(ringBuffer.volume + 0.1, 2.0)
+                         ringBuffer.volume = min(ringBuffer.volume + 0.1, 3.0)
                          ringBuffer.volume = (ringBuffer.volume * 10).rounded() / 10
                     } else if c3 == 66 { // Down
                          ringBuffer.volume = max(ringBuffer.volume - 0.1, 0.0)
