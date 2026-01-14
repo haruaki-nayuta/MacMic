@@ -275,7 +275,13 @@ func main() {
         }
     }
 
-    print("\n⚡️ Vibe Mic Hardcore v2: Dueal-Unit Engine ⚡️")
+    print("""
+ __  __            __  __ _       
+|  \\/  | __ _  ___|  \\/  (_) ___ 
+| |\\/| |/ _` |/ __| |\\/| | |/ __|
+| |  | | (_| | (__| |  | | | (__ 
+|_|  |_|\\__,_|\\___|_|  |_|_|\\___|
+""")
     print("   Input -> [Ring Buffer] -> Output")
     
     var inputUnit: AudioUnit?
@@ -335,7 +341,6 @@ func main() {
     checkErr(AudioUnitGetProperty(inputUnit!, kAudioUnitProperty_StreamFormat, kAudioUnitScope_Input, kInputBus, &deviceFormat, &deviceFormatSize), "Get Device Format")
     
     let sampleRate = deviceFormat.mSampleRate
-    print("   ℹ️ Device Sample Rate: \(sampleRate) Hz")
 
     let bytesPerSample = UInt32(MemoryLayout<Float32>.size)
     var streamFormat = AudioStreamBasicDescription(
@@ -388,7 +393,6 @@ func main() {
     checkErr(AudioOutputUnitStart(inputUnit!), "Start Input")
     checkErr(AudioOutputUnitStart(outputUnit!), "Start Output")
     
-    print("   Sample Rate: \(sampleRate) Hz")
     print("   Buffer: \(bufferFrames) frames (Requested)")
     
     print("\n   -----------------------------------------")
