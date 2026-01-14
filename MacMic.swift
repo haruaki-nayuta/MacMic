@@ -356,6 +356,28 @@ func main() {
     checkErr(AudioUnitSetProperty(outputUnit!, kAudioOutputUnitProperty_CurrentDevice, kAudioUnitScope_Global, 0, &outputDeviceID, 4), "Set Output Device")
     print("   🔊 Output Device: \(getDeviceName(outputDeviceID))")
 
+    // ---------------------------------------------------------
+    // 2.5 Auto-Mute Check (Feedback Prevention)
+    // ---------------------------------------------------------
+    func isBuiltInDevice(_ name: String) -> Bool {
+        let lower = name.lowercased()
+        return lower.contains("macbook") || 
+               lower.contains("imac") || 
+               lower.contains("mac mini") || 
+               lower.contains("mac studio") || 
+               lower.contains("mac pro") || 
+               lower.contains("internal") || 
+               lower.contains("built-in")
+    }
+
+    let inputName = getDeviceName(inputDeviceID)
+    let outputName = getDeviceName(outputDeviceID)
+
+    if isBuiltInDevice(inputName) && isBuiltInDevice(outputName) {
+        print("\n\u{001B}[33m   ⚠️  CAUTION: Built-in Mic & Speakers detected! \n.     Auto-Muted to prevent feedback.\u{001B}[0m")
+        ringBuffer.isMuted = true
+    }
+
     // Store to Global State
     AppState.inputUnit = inputUnit
     AppState.outputUnit = outputUnit
