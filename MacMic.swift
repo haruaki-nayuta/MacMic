@@ -375,7 +375,7 @@ func main() {
     
     // Initial Status Print
     func printStatus() {
-        let volPercent = Int(ringBuffer.volume * 100)
+        let volPercent = Int(round(ringBuffer.volume * 100))
         let muteStatus = ringBuffer.isMuted ? "🔇 MUTED" : "🔈 ON   "
         // \r to overwrite line, \u{1B}[K to clear rest of line
         print("\r   Volume: \(volPercent)%  \(muteStatus)     ", terminator: "")
@@ -403,9 +403,11 @@ func main() {
             
             if c3 == 65 { // Up Arrow
                 ringBuffer.volume = min(ringBuffer.volume + 0.1, 2.0) // Max 200%
+                ringBuffer.volume = (ringBuffer.volume * 10).rounded() / 10
                 printStatus()
             } else if c3 == 66 { // Down Arrow
                 ringBuffer.volume = max(ringBuffer.volume - 0.1, 0.0)
+                ringBuffer.volume = (ringBuffer.volume * 10).rounded() / 10
                 printStatus()
             }
         }
