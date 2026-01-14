@@ -177,11 +177,32 @@ let outputRenderCallback: AURenderCallback = { (
 
 
 func main() {
+    let kAppVersion = "1.0.0"
+    let args = CommandLine.arguments
+
+    // Check for Help
+    if args.contains("-h") || args.contains("--help") {
+        print("""
+        Usage: MacMic [options]
+
+        Options:
+          -b <size>  Set buffer size (32, 64, 128, 256). Default: 32.
+          -v         Show version information.
+          -h         Show this help message.
+        """)
+        exit(0)
+    }
+
+    // Check for Version
+    if args.contains("-v") || args.contains("--version") {
+        print("MacMic version \(kAppVersion)")
+        exit(0)
+    }
+
     // Default buffer size
     var bufferFrames: UInt32 = 32
     
-    // Parse command line arguments
-    let args = CommandLine.arguments
+    // Parse command line arguments for buffer size
     if let index = args.firstIndex(of: "-b") {
         if index + 1 < args.count {
             if let val = UInt32(args[index + 1]) {
