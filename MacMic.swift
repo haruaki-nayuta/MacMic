@@ -172,6 +172,30 @@ let outputRenderCallback: AURenderCallback = { (
 
 
 func main() {
+    // Default buffer size
+    var bufferFrames: UInt32 = 32
+    
+    // Parse command line arguments
+    let args = CommandLine.arguments
+    if let index = args.firstIndex(of: "-b") {
+        if index + 1 < args.count {
+            if let val = UInt32(args[index + 1]) {
+                if [32, 64, 128, 256].contains(val) {
+                    bufferFrames = val
+                } else {
+                    print("Error: Invalid buffer size. Please choose from 32, 64, 128, 256.")
+                    exit(1)
+                }
+            } else {
+                print("Error: Invalid integer format for buffer size.")
+                exit(1)
+            }
+        } else {
+            print("Error: Missing value for -b option.")
+            exit(1)
+        }
+    }
+
     print("\n⚡️ Vibe Mic Hardcore v2: Dual-Unit Engine ⚡️")
     print("   Input -> [Ring Buffer] -> Output")
     
@@ -286,7 +310,8 @@ func main() {
     // ---------------------------------------------------------
     // 5. Buffer Size (Extreme Optimization)
     // ---------------------------------------------------------
-    var bufferFrames: UInt32 = 32 // Hardcore Mode: 32 frames (approx 0.6ms)
+    // var bufferFrames: UInt32 = 32 // Hardcore Mode: 32 frames (approx 0.6ms) - MOVED TO TOP
+
     let uint32Size = UInt32(MemoryLayout<UInt32>.size)
     
     // 両方にリクエスト
