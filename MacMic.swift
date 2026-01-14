@@ -23,7 +23,11 @@ func getDeviceName(_ deviceID: AudioObjectID) -> String {
         mScope: kAudioObjectPropertyScopeGlobal,
         mElement: kAudioObjectPropertyElementMain
     )
-    let status = AudioObjectGetPropertyData(deviceID, &propertyAddress, 0, nil, &propertySize, &name)
+    
+    let status = withUnsafeMutablePointer(to: &name) { ptr in
+        AudioObjectGetPropertyData(deviceID, &propertyAddress, 0, nil, &propertySize, ptr)
+    }
+    
     return status == noErr ? (name as String) : "Unknown Device"
 }
 
@@ -113,7 +117,8 @@ let inputRenderCallback: AURenderCallback = { (
     // AudioUnitはCポインタなので、Unmanagedではなく直接キャストで復元する
     // inRefConは UnsafeMutableRawPointer?
     // AudioUnitは UnsafeMutablePointer<ComponentInstanceRecord>
-    let audioUnit = unsafeBitCast(inRefCon, to: AudioUnit.self)
+    // AudioUnitは UnsafeMutablePointer<ComponentInstanceRecord>
+    let audioUnit = inRefCon.assumingMemoryBound(to: AudioUnit.Pointee.self)
     
     // データを確保するためのバッファリストを作成
     // ここでは1チャンネル(モノラル)前提
