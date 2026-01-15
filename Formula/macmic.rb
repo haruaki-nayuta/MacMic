@@ -1,8 +1,8 @@
 class Macmic < Formula
   desc "The realtime mic monitor tool"
   homepage "https://github.com/haruaki-nayuta/MacMic"
-  url "https://github.com/haruaki-nayuta/MacMic/archive/refs/tags/v1.0.0.tar.gz"
-  sha256 "66b1b6c0b45ed5c7f3e29c4d9c804f299640bc3cbfe69ad5072dfe0520a2874c"
+  url "https://github.com/haruaki-nayuta/MacMic/archive/refs/tags/v1.0.1.tar.gz"
+  sha256 "eb173f73a43469f2fc33a710527cd8719639e9010d7e63b575288c4b3d07fa52"
   license "MIT"
 
   depends_on :xcode => ["12.0", :build]
