@@ -12,6 +12,17 @@ The realtime mic monitor tool.
 MacBook Air (2025)
 
 ## 導入方法
+
+### Homebrewでのインストール
+Homebrewを使用して簡単にインストールできます。
+
+```bash
+brew tap haruaki-nayuta/macmic
+brew install macmic
+```
+
+### 手動でのインストール
+
 ターミナルで以下のコマンドを実行し、ビルドしてください。
 
 ```bash
