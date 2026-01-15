@@ -15,7 +15,7 @@ MacBook Air (2025)
 ターミナルで以下のコマンドを実行し、ビルドしてください。
 
 ```bash
-swiftc MacMic.swift -o macmic
+swiftc macmic.swift -o macmic
 ```
 
 ## 使い方
