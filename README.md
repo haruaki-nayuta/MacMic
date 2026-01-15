@@ -22,7 +22,7 @@ swiftc MacMic.swift -o macmic
 ビルドした実行ファイルをターミナルから起動します。
 
 ```bash
-./MacMic
+./macmic
 ```
 
 ### オプション
