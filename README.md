@@ -33,6 +33,8 @@ swiftc macmic.swift -o macmic
 ビルドした実行ファイルをターミナルから起動します。
 
 ```bash
+macmic
+#or
 ./macmic
 ```
 
