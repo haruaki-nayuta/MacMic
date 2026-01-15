@@ -248,7 +248,7 @@ func restoreBufferSize() {
 }
 
 func main() {
-    let kAppVersion = "1.0.1"
+    let kAppVersion = "1.0.2"
     let args = CommandLine.arguments
 
     // Check for Help
