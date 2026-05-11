@@ -1,4 +1,4 @@
-# MacMic
+# MicMonitor
 The realtime mic monitor tool.
 
 リアルタイム音声モニタツール
